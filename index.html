@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f14" />
+  <meta name="description" content="Cronómetro de entrenamiento por intervalos: tiempo activo real, descansos que no consumen tiempo activo, sonidos y voz." />
+  <title>Workout Interval Timer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main id="app">
+
+    <!-- ============================= CONFIG ============================= -->
+    <section id="screen-config" class="screen" aria-labelledby="config-title">
+      <header class="app-header">
+        <div>
+          <h1 id="config-title">Workout Interval Timer</h1>
+          <p class="subtitle">El descanso no descuenta tiempo activo</p>
+        </div>
+        <div class="header-tools">
+          <button type="button" id="toggle-sound" class="chip" aria-pressed="true" title="Activar/desactivar sonido">
+            <span aria-hidden="true">&#128266;</span> Sonido
+          </button>
+          <button type="button" id="toggle-voice" class="chip" aria-pressed="false" title="Activar/desactivar voz">
+            <span aria-hidden="true">&#128483;</span> Voz
+          </button>
+          <button type="button" id="toggle-theme" class="chip" aria-pressed="false" title="Cambiar tema claro/oscuro">
+            <span aria-hidden="true">&#127763;</span> Tema
+          </button>
+        </div>
+      </header>
+
+      <form id="form-config" autocomplete="off" novalidate>
+
+        <fieldset class="card">
+          <legend>Rutina</legend>
+          <label class="field">
+            <span>Nombre del entrenamiento</span>
+            <input type="text" id="workout-name" maxlength="60" placeholder="Mi entrenamiento" />
+          </label>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Tiempo activo objetivo</legend>
+          <p class="hint">Solo el tiempo de ejercicio. Los descansos no lo consumen.</p>
+          <div class="time-inputs">
+            <label class="field">
+              <span>Horas</span>
+              <input type="number" id="active-h" min="0" max="99" step="1" inputmode="numeric" value="0" />
+            </label>
+            <label class="field">
+              <span>Minutos</span>
+              <input type="number" id="active-m" min="0" max="59" step="1" inputmode="numeric" value="30" />
+            </label>
+            <label class="field">
+              <span>Segundos</span>
+              <input type="number" id="active-s" min="0" max="59" step="1" inputmode="numeric" value="0" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Descanso y arranque</legend>
+          <div class="grid-2">
+            <label class="field">
+              <span>Transición entre ejercicios (s)</span>
+              <input type="number" id="rest-s" min="0" max="300" step="1" inputmode="numeric" value="5" />
+            </label>
+            <label class="field">
+              <span>Cuenta regresiva inicial</span>
+              <select id="countdown">
+                <option value="0">Sin cuenta (0 s)</option>
+                <option value="3000" selected>3 segundos</option>
+                <option value="5000">5 segundos</option>
+                <option value="10000">10 segundos</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>Modo de circuito</span>
+              <select id="repeat-mode">
+                <option value="repeat" selected>Repetir hasta completar el tiempo</option>
+                <option value="once">Una sola vuelta</option>
+              </select>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="rest-between-rounds" checked />
+              <span>Descansar también entre vueltas</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Ejercicios (<span id="exercise-count">0</span>)</legend>
+          <p class="hint">Mínimo 1, máximo 50. Reordena con &#8593; &#8595;.</p>
+          <ol id="exercises-list" class="exercises-list"></ol>
+          <div class="row-actions">
+            <button type="button" id="btn-add-exercise" class="btn btn-secondary">+ Añadir ejercicio</button>
+            <button type="button" id="btn-reset-exercises" class="btn btn-ghost">Restablecer por defecto</button>
+          </div>
+        </fieldset>
+
+        <section class="card summary-card" aria-live="polite">
+          <h2>Resumen de duración</h2>
+          <dl id="calc-summary" class="calc-list"></dl>
+        </section>
+
+        <div class="actions sticky-actions">
+          <button type="submit" id="btn-start" class="btn btn-primary btn-xl">Iniciar entrenamiento</button>
+        </div>
+      </form>
+
+      <section class="card">
+        <h2>Rutinas guardadas</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Selecciona una rutina</span>
+            <select id="routines-select"></select>
+          </label>
+          <div class="routine-actions">
+            <button type="button" id="btn-load-routine" class="btn btn-secondary">Cargar</button>
+            <button type="button" id="btn-rename-routine" class="btn btn-secondary">Renombrar</button>
+            <button type="button" id="btn-delete-routine" class="btn btn-danger">Eliminar</button>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button type="button" id="btn-save-routine" class="btn btn-secondary">Guardar rutina actual</button>
+          <button type="button" id="btn-export" class="btn btn-ghost">Exportar JSON</button>
+          <button type="button" id="btn-import" class="btn btn-ghost">Importar JSON</button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Presets rápidos</h2>
+        <div class="row-actions">
+          <button type="button" class="btn btn-secondary preset" data-preset="hiit">HIIT</button>
+          <button type="button" class="btn btn-secondary preset" data-preset="tabata">Tabata</button>
+          <button type="button" class="btn btn-secondary preset" data-preset="movilidad">Movilidad</button>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================= SESSION ============================= -->
+    <section id="screen-session" class="screen session" hidden aria-labelledby="status-text">
+      <div class="status-bar" id="status-bar" data-state="WORK">
+        <span class="status-icon" id="status-icon" aria-hidden="true">&#9679;</span>
+        <span id="status-text" class="status-text">ENTRENANDO</span>
+        <button type="button" id="btn-fullscreen" class="icon-btn" title="Pantalla completa" aria-label="Pantalla completa">&#9974;</button>
+      </div>
+
+      <div class="session-main">
+        <div id="phase-badge" class="phase-badge" hidden>DESCANSO</div>
+        <div id="primary-display" class="primary-time" role="timer" aria-hidden="true">00:00</div>
+        <div id="main-label" class="main-label">Ejercicio</div>
+
+        <div class="session-meta">
+          <span id="meta-exercise">Ejercicio 1 de 1</span>
+          <span class="dot" aria-hidden="true">&#8226;</span>
+          <span id="meta-round">Vuelta 1</span>
+        </div>
+
+        <div id="next-exercise" class="next-exercise">Siguiente: &mdash;</div>
+
+        <div class="active-remaining">
+          <span>Tiempo activo restante</span>
+          <strong id="active-remaining">00:00</strong>
+        </div>
+      </div>
+
+      <div class="progress-group">
+        <div class="progress-row">
+          <span id="progress-exercise-label">Ejercicio</span>
+          <div class="progress" role="progressbar" aria-labelledby="progress-exercise-label" aria-valuemin="0" aria-valuemax="100" id="progress-exercise">
+            <div id="bar-exercise" class="progress-fill"></div>
+          </div>
+        </div>
+        <div class="progress-row">
+          <span id="progress-session-label">Sesión activa</span>
+          <div class="progress" role="progressbar" aria-labelledby="progress-session-label" aria-valuemin="0" aria-valuemax="100" id="progress-session">
+            <div id="bar-session" class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button type="button" id="btn-pause" class="btn btn-primary btn-xl" aria-pressed="false">Pausar</button>
+        <button type="button" id="btn-skip" class="btn btn-secondary">Saltar ejercicio</button>
+        <button type="button" id="btn-prev" class="btn btn-secondary">Anterior</button>
+        <button type="button" id="btn-reset" class="btn btn-secondary">Reiniciar</button>
+        <button type="button" id="btn-exit" class="btn btn-ghost">Salir</button>
+      </div>
+
+      <div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    </section>
+
+    <!-- ============================= SUMMARY ============================= -->
+    <section id="screen-summary" class="screen" hidden aria-labelledby="summary-title">
+      <header class="app-header">
+        <h1 id="summary-title">&#127881; Entrenamiento completado</h1>
+      </header>
+
+      <section class="card">
+        <dl id="summary-grid" class="summary-grid"></dl>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="btn-repeat" class="btn btn-primary btn-xl">Repetir entrenamiento</button>
+        <button type="button" id="btn-edit" class="btn btn-secondary">Editar rutina</button>
+        <button type="button" id="btn-new" class="btn btn-ghost">Nueva rutina</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
